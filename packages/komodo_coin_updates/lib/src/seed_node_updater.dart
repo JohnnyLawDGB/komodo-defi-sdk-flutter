@@ -26,6 +26,7 @@ class SeedNodeUpdater {
   /// Throws an exception if the seed nodes cannot be fetched or parsed.
   static Future<({List<SeedNode> seedNodes, int netId})> fetchSeedNodes({
     required AssetRuntimeUpdateConfig config,
+    int netId = kDefaultNetId,
     bool filterForWeb = kIsWeb,
     http.Client? httpClient,
     Duration timeout = const Duration(seconds: 15),
@@ -63,20 +64,18 @@ class SeedNodeUpdater {
       final seedNodesJson = jsonListFromString(response.body);
       var seedNodes = SeedNode.fromJsonList(seedNodesJson);
 
-      // Filter nodes to the configured netId
-      seedNodes = seedNodes.where((e) => e.netId == kDefaultNetId).toList();
+      // Filter nodes to the requested netId
+      seedNodes = seedNodes.where((e) => e.netId == netId).toList();
 
       if (filterForWeb && kIsWeb) {
         seedNodes = seedNodes.where((e) => e.wss).toList();
       }
 
       if (seedNodes.isEmpty) {
-        throw const _SeedNodeFetchFailure(
-          'No seed nodes found for netid $kDefaultNetId',
-        );
+        throw _SeedNodeFetchFailure('No seed nodes found for netid $netId');
       }
 
-      return (seedNodes: seedNodes, netId: kDefaultNetId);
+      return (seedNodes: seedNodes, netId: netId);
     } on Object catch (error) {
       debugPrint('Peer configuration update failed');
       // Only locally constructed, fixed failures may retain their explanation.

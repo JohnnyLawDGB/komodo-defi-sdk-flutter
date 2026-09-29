@@ -16,6 +16,7 @@ export 'src/auth/exceptions/auth_exception.dart';
 export 'src/auth/exceptions/wallet_changed_disconnect_exception.dart';
 export 'src/auth/kdf_user.dart';
 export 'src/constants.dart';
+export 'src/kdf_network_config.dart';
 // Aliased/proxied types
 export 'src/exported_rpc_types.dart';
 export 'src/fees/fee_management.dart';

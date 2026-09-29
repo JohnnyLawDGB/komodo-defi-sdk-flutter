@@ -27,6 +27,40 @@ void main() {
       config = const AssetRuntimeUpdateConfig();
     });
 
+    test('filters and reports the requested netId', () async {
+      final mockResponse = MockResponse();
+      const responseBody = '''[
+        {"name":"dgb-seed-1","host":"seed1.digiscope.me","type":"domain","wss":false,"netid":2014,"contact":[{"email":""}]},
+        {"name":"kmd-seed","host":"seed01.kmdefi.net","type":"domain","wss":true,"netid":6133,"contact":[{"email":""}]}
+      ]''';
+      when(() => mockResponse.statusCode).thenReturn(200);
+      when(() => mockResponse.body).thenReturn(responseBody);
+      when(() => mockClient.get(any())).thenAnswer((_) async => mockResponse);
+
+      final result = await SeedNodeUpdater.fetchSeedNodes(
+        config: config,
+        netId: 2014,
+        httpClient: mockClient,
+      );
+
+      expect(result.netId, 2014);
+      expect(result.seedNodes.map((n) => n.host), ['seed1.digiscope.me']);
+    });
+
+    test('error names the requested netId when none match', () async {
+      final mockResponse = MockResponse();
+      when(() => mockResponse.statusCode).thenReturn(200);
+      when(() => mockResponse.body).thenReturn(
+        '[{"name":"kmd","host":"seed01.kmdefi.net","type":"domain","wss":true,"netid":6133,"contact":[{"email":""}]}]',
+      );
+      when(() => mockClient.get(any())).thenAnswer((_) async => mockResponse);
+
+      await expectLater(
+        () => SeedNodeUpdater.fetchSeedNodes(config: config, netId: 2014, httpClient: mockClient),
+        throwsA(isA<Exception>().having((e) => e.toString(), 'message', contains('netid 2014'))),
+      );
+    });
+
     test('should successfully fetch seed nodes with custom client', () async {
       // Arrange
       final mockResponse = MockResponse();
