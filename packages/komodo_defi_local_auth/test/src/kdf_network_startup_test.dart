@@ -22,7 +22,7 @@ class _StartupKdfOperations implements IKdfOperations {
   bool _running = false;
 
   @override
-  String get operationsName => 'startup failure fake';
+  String get operationsName => 'network startup fake';
 
   @override
   Future<KdfStartupResult> kdfMain(
@@ -127,7 +127,17 @@ void main() {
   });
 
   setUp(() {
-    FlutterSecureStorage.setMockInitialValues(<String, String>{});
+    const options = AuthOptions(
+      derivationMethod: DerivationMethod.hdWallet,
+      allowWeakPassword: true,
+    );
+    final storedUser = KdfUser(
+      walletId: WalletId.fromName('test-wallet', options),
+      isBip39Seed: true,
+    );
+    FlutterSecureStorage.setMockInitialValues(<String, String>{
+      'user_test-wallet': jsonEncode(storedUser.toJson()),
+    });
   });
 
   test('no-auth KDF start uses the configured DigiByte network', () async {
@@ -156,6 +166,47 @@ void main() {
     expect(params['seednodes'], ['seed1.digiscope.me']);
   });
 
+  test('wallet KDF start uses the configured DigiByte network', () async {
+    final hostConfig = LocalConfig(https: false, rpcPassword: 'rpc-pass');
+    final operations = _StartupKdfOperations(
+      noAuthResult: KdfStartupResult.ok,
+      walletResult: KdfStartupResult.initError,
+    );
+    final service = KdfAuthService(
+      KomodoDefiFramework.createWithOperations(
+        hostConfig: hostConfig,
+        kdfOperations: operations,
+      ),
+      hostConfig,
+      network: const KdfNetworkConfig(
+        netId: 2014,
+        seedNodes: ['seed1.digiscope.me'],
+      ),
+    );
+    addTearDown(service.dispose);
+
+    await expectLater(
+      service.signIn(
+        walletName: 'test-wallet',
+        password: 'Qz7!sentinel-Wv4#',
+        options: const AuthOptions(
+          derivationMethod: DerivationMethod.hdWallet,
+          allowWeakPassword: true,
+        ),
+      ),
+      throwsA(isA<AuthException>()),
+    );
+
+    final walletStarts = operations.startParams
+        .where((p) => p.containsKey('wallet_password'))
+        .toList();
+    expect(walletStarts, isNotEmpty);
+    for (final params in walletStarts) {
+      expect(params['netid'], 2014);
+      expect(params['seednodes'], ['seed1.digiscope.me']);
+    }
+  });
+
   test('default network is unchanged (6133)', () async {
     final hostConfig = LocalConfig(https: false, rpcPassword: 'rpc-pass');
     final operations = _StartupKdfOperations(
@@ -172,6 +223,9 @@ void main() {
     addTearDown(service.dispose);
 
     await expectLater(service.getUsers(), throwsA(isA<AuthException>()));
-    expect(operations.startParams.single['netid'], kDefaultNetId);
+    final params = operations.startParams.single;
+    expect(params['netid'], kDefaultNetId);
+    expect(params['seednodes'], isNotEmpty);
+    expect(params['seednodes'], isNot(contains('seed1.digiscope.me')));
   });
 }
