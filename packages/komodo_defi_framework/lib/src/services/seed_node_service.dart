@@ -23,63 +23,81 @@ class SeedNodeService {
     return await configRepository.tryLoad() ?? const AssetRuntimeUpdateConfig();
   }
 
-  /// Fetches seed nodes from the remote configuration with fallback to
-  /// bundled defaults.
+  /// Fetches seed nodes for [network].
   ///
-  /// This method attempts to fetch the latest seed nodes from the Komodo
-  /// Platform repository and converts them to the string format expected by
-  /// the KDF startup configuration.
-  ///
-  /// Returns a list of seed node host addresses. If fetching fails, falls back
-  /// to the bundled seed node asset, then to the hardcoded emergency seed list.
+  /// Explicit seeds in [network] are returned as-is. Otherwise: remote
+  /// `seed-nodes.json` filtered by `network.netId`, then the bundled asset,
+  /// then (only for [kDefaultNetId]) the hard-coded defaults.
   static Future<({List<String> seedNodes, int netId})> fetchSeedNodes({
+    KdfNetworkConfig network = const KdfNetworkConfig(),
     bool filterForWeb = kIsWeb,
-  }) async {
-    try {
-      final config = await _getRuntimeConfig();
-      final (
-        seedNodes: nodes,
-        netId: netId,
-      ) = await SeedNodeUpdater.fetchSeedNodes(
-        filterForWeb: filterForWeb,
-        config: config,
-      );
-
-      return (
-        seedNodes: SeedNodeUpdater.seedNodesToStringList(nodes),
-        netId: netId,
-      );
-    } catch (e) {
-      if (KdfLoggingConfig.verboseLogging) {
-        debugPrint('Remote peer configuration fetch failed');
-        debugPrint('WARN Falling back to bundled seed nodes');
-      }
-
-      try {
-        final fallbackNodes = await loadBundledSeedNodes(
+  }) {
+    return fetchSeedNodesWith(
+      network: network,
+      filterForWeb: filterForWeb,
+      remote: (netId) async {
+        final config = await _getRuntimeConfig();
+        final (
+          seedNodes: nodes,
+          netId: _,
+        ) = await SeedNodeUpdater.fetchSeedNodes(
+          config: config,
+          netId: netId,
           filterForWeb: filterForWeb,
         );
-        return (seedNodes: fallbackNodes, netId: kDefaultNetId);
-      } catch (fallbackError) {
-        if (KdfLoggingConfig.verboseLogging) {
-          debugPrint('Bundled peer configuration load failed');
-          debugPrint('WARN Falling back to emergency seed nodes');
-        }
+        return SeedNodeUpdater.seedNodesToStringList(nodes);
+      },
+    );
+  }
 
-        return (
-          seedNodes: SeedNodeValidator.getDefaultSeedNodes(),
-          netId: kDefaultNetId,
-        );
+  /// Test seam for [fetchSeedNodes]: [remote] replaces the network fetch.
+  @visibleForTesting
+  static Future<({List<String> seedNodes, int netId})> fetchSeedNodesWith({
+    required KdfNetworkConfig network,
+    required Future<List<String>> Function(int netId) remote,
+    bool filterForWeb = kIsWeb,
+    AssetBundle? bundle,
+  }) async {
+    final netId = network.netId;
+    if (network.hasExplicitSeedNodes) {
+      return (
+        seedNodes: List<String>.unmodifiable(network.seedNodes!),
+        netId: netId,
+      );
+    }
+    try {
+      return (seedNodes: await remote(netId), netId: netId);
+    } catch (e) {
+      if (KdfLoggingConfig.verboseLogging) {
+        debugPrint('Remote seed node fetch failed for netid $netId: $e');
+        debugPrint('WARN Falling back to bundled seed nodes');
       }
+    }
+    try {
+      final bundled = await loadBundledSeedNodes(
+        netId: netId,
+        filterForWeb: filterForWeb,
+        bundle: bundle,
+      );
+      return (seedNodes: bundled, netId: netId);
+    } catch (e) {
+      if (netId != kDefaultNetId) {
+        throw Exception('No seed nodes available for netid $netId: $e');
+      }
+      if (KdfLoggingConfig.verboseLogging) {
+        debugPrint('Bundled peer configuration load failed');
+        debugPrint('WARN Falling back to emergency seed nodes');
+      }
+      return (seedNodes: SeedNodeValidator.getDefaultSeedNodes(), netId: netId);
     }
   }
 
-  /// Loads bundled seed nodes from the framework asset package.
+  /// Loads bundled seed nodes for [netId] from the framework asset package.
   ///
-  /// The bundled asset is filtered the same way as the remote source:
-  /// only the current [kDefaultNetId] is accepted, and on web only WSS nodes
-  /// are kept.
+  /// The bundled asset is filtered the same way as the remote source: only
+  /// nodes matching [netId] are accepted, and on web only WSS nodes are kept.
   static Future<List<String>> loadBundledSeedNodes({
+    int netId = kDefaultNetId,
     bool filterForWeb = kIsWeb,
     AssetBundle? bundle,
   }) async {
@@ -87,14 +105,14 @@ class SeedNodeService {
     final content = await (bundle ?? rootBundle).loadString(assetKey);
     var seedNodes = SeedNode.fromJsonList(
       jsonListFromString(content),
-    ).where((node) => node.netId == kDefaultNetId).toList();
+    ).where((node) => node.netId == netId).toList();
 
     if (filterForWeb && kIsWeb) {
       seedNodes = seedNodes.where((node) => node.wss).toList();
     }
 
     if (seedNodes.isEmpty) {
-      throw Exception('No bundled seed nodes found for netid $kDefaultNetId');
+      throw Exception('No bundled seed nodes found for netid $netId');
     }
 
     return SeedNodeUpdater.seedNodesToStringList(seedNodes);

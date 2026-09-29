@@ -23,6 +23,7 @@ class SeedNodeUpdater {
   /// The [timeout] parameter sets the maximum duration for the HTTP request.
   /// Defaults to 15 seconds to prevent indefinite hangs.
   ///
+  /// The [netId] parameter selects which seed nodes are kept (defaults to [kDefaultNetId]); the returned netId is always this value.
   /// Throws an exception if the seed nodes cannot be fetched or parsed.
   static Future<({List<SeedNode> seedNodes, int netId})> fetchSeedNodes({
     required AssetRuntimeUpdateConfig config,

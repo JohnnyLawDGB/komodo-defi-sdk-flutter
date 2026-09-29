@@ -9,7 +9,16 @@ void main() {
   });
 
   test('explicit seeds are detected; empty list is not explicit', () {
-    expect(const KdfNetworkConfig(netId: 2014, seedNodes: ['seed1.digiscope.me']).hasExplicitSeedNodes, isTrue);
-    expect(const KdfNetworkConfig(netId: 2014, seedNodes: []).hasExplicitSeedNodes, isFalse);
+    expect(
+      const KdfNetworkConfig(
+        netId: 2014,
+        seedNodes: ['seed1.digiscope.me'],
+      ).hasExplicitSeedNodes,
+      isTrue,
+    );
+    expect(
+      const KdfNetworkConfig(netId: 2014, seedNodes: []).hasExplicitSeedNodes,
+      isFalse,
+    );
   });
 }

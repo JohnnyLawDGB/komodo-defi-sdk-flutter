@@ -56,8 +56,18 @@ void main() {
       when(() => mockClient.get(any())).thenAnswer((_) async => mockResponse);
 
       await expectLater(
-        () => SeedNodeUpdater.fetchSeedNodes(config: config, netId: 2014, httpClient: mockClient),
-        throwsA(isA<Exception>().having((e) => e.toString(), 'message', contains('netid 2014'))),
+        () => SeedNodeUpdater.fetchSeedNodes(
+          config: config,
+          netId: 2014,
+          httpClient: mockClient,
+        ),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('netid 2014'),
+          ),
+        ),
       );
     });
 

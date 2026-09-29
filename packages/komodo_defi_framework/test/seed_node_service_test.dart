@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart' show AssetBundle, ByteData;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:komodo_defi_framework/src/services/seed_node_service.dart';
+import 'package:komodo_defi_types/komodo_defi_types.dart';
 
 class _FakeBundle extends AssetBundle {
   _FakeBundle(this.map);
@@ -49,6 +50,52 @@ void main() {
       );
 
       expect(seedNodes, equals(const ['seed01.kmdefi.net']));
+    });
+  });
+
+  group('SeedNodeService with a custom network', () {
+    test(
+      'explicit seeds are returned as-is with the configured netId',
+      () async {
+        final result = await SeedNodeService.fetchSeedNodes(
+          network: const KdfNetworkConfig(
+            netId: 2014,
+            seedNodes: ['seed1.digiscope.me'],
+          ),
+        );
+        expect(result.seedNodes, ['seed1.digiscope.me']);
+        expect(result.netId, 2014);
+      },
+    );
+
+    test('bundled seeds are filtered by the requested netId', () async {
+      final bundle = _FakeBundle({
+        'packages/komodo_defi_framework/assets/config/seed_nodes.json': '''
+[
+  {"name":"dgb-seed-1","host":"seed1.digiscope.me","type":"domain","wss":false,"netid":2014,"contact":[{"email":""}]},
+  {"name":"kmd","host":"seed01.kmdefi.net","type":"domain","wss":true,"netid":6133,"contact":[{"email":""}]}
+]
+''',
+      });
+      final seeds = await SeedNodeService.loadBundledSeedNodes(
+        netId: 2014,
+        bundle: bundle,
+      );
+      expect(seeds, ['seed1.digiscope.me']);
+    });
+
+    test('never falls back to 6133 defaults for a custom netId', () async {
+      final bundle = _FakeBundle({}); // no bundled asset
+      await expectLater(
+        SeedNodeService.fetchSeedNodesWith(
+          network: const KdfNetworkConfig(netId: 2014),
+          remote: (netId) async => throw Exception('offline'),
+          bundle: bundle,
+        ),
+        throwsA(
+          isA<Exception>().having((e) => e.toString(), 'msg', contains('2014')),
+        ),
+      );
     });
   });
 }
