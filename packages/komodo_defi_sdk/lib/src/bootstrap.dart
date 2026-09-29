@@ -165,6 +165,7 @@ Future<void> bootstrap({
       kdf: framework,
       hostConfig:
           hostConfig ?? LocalConfig(https: false, rpcPassword: rpcPassword),
+      network: config.network,
     );
     await auth.ensureInitialized();
     return auth;

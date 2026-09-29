@@ -28,6 +28,7 @@ class KomodoDefiSdkConfig {
     this.tronGaslessProvider,
     this.assetConfigTransform,
     this.initialActivationPolicy,
+    this.network = const KdfNetworkConfig(),
   });
 
   /// Set of asset IDs that should be enabled by default
@@ -101,6 +102,9 @@ class KomodoDefiSdkConfig {
   /// Null keeps standalone SDK clients unrestricted by default.
   final ActivationPolicySnapshot? initialActivationPolicy;
 
+  /// KDF P2P network (netid and optional explicit seed nodes).
+  final KdfNetworkConfig network;
+
   KomodoDefiSdkConfig copyWith({
     Set<String>? defaultAssets,
     bool? preActivateDefaultAssets,
@@ -117,6 +121,7 @@ class KomodoDefiSdkConfig {
     TronGaslessProviderConfig? tronGaslessProvider,
     AssetConfigTransform? assetConfigTransform,
     ActivationPolicySnapshot? initialActivationPolicy,
+    KdfNetworkConfig? network,
   }) {
     return KomodoDefiSdkConfig(
       defaultAssets: defaultAssets ?? this.defaultAssets,
@@ -144,6 +149,7 @@ class KomodoDefiSdkConfig {
       assetConfigTransform: assetConfigTransform ?? this.assetConfigTransform,
       initialActivationPolicy:
           initialActivationPolicy ?? this.initialActivationPolicy,
+      network: network ?? this.network,
     );
   }
 }

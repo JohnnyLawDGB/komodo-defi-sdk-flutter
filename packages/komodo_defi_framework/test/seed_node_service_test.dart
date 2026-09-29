@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart' show AssetBundle, ByteData;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:komodo_defi_framework/src/config/seed_node_validator.dart';
 import 'package:komodo_defi_framework/src/services/seed_node_service.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 
@@ -96,6 +97,28 @@ void main() {
           isA<Exception>().having((e) => e.toString(), 'msg', contains('2014')),
         ),
       );
+    });
+
+    test('explicit seeds never trigger a remote fetch', () async {
+      final result = await SeedNodeService.fetchSeedNodesWith(
+        network: const KdfNetworkConfig(
+          netId: 2014,
+          seedNodes: ['seed1.digiscope.me'],
+        ),
+        remote: (netId) async => throw StateError('remote must not be called'),
+      );
+      expect(result.seedNodes, ['seed1.digiscope.me']);
+      expect(result.netId, 2014);
+    });
+
+    test('default network falls back to the default seed nodes', () async {
+      final result = await SeedNodeService.fetchSeedNodesWith(
+        network: const KdfNetworkConfig(),
+        remote: (netId) async => throw Exception('offline'),
+        bundle: _FakeBundle({}),
+      );
+      expect(result.seedNodes, SeedNodeValidator.getDefaultSeedNodes());
+      expect(result.netId, kDefaultNetId);
     });
   });
 }

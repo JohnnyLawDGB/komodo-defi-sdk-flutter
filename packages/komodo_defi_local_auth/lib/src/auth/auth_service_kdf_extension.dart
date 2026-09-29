@@ -496,7 +496,7 @@ extension KdfExtensions on KdfAuthService {
 
     // Fetch seed nodes using the dedicated service
     final (seedNodes: seedNodes, netId: netId) =
-        await SeedNodeService.fetchSeedNodes();
+        await SeedNodeService.fetchSeedNodes(network: _network);
 
     return KdfStartupConfig.generateWithDefaults(
       walletName: walletName,

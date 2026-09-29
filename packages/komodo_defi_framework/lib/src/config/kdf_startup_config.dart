@@ -175,11 +175,12 @@ class KdfStartupConfig {
     String? rpcIp,
     int rpcPort = 7783,
     EventStreamingConfiguration? eventStreamingConfiguration,
+    KdfNetworkConfig network = const KdfNetworkConfig(),
   }) async {
     final (String? home, String? dbDir) = await _getAndSetupUserHome();
 
     final (seedNodes: seeds, netId: netId) =
-        await SeedNodeService.fetchSeedNodes();
+        await SeedNodeService.fetchSeedNodes(network: network);
 
     return KdfStartupConfig._(
       walletName: null,
