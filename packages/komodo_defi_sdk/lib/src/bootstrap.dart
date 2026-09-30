@@ -190,6 +190,7 @@ Future<void> bootstrap({
   container.registerSingletonAsync<KomodoAssetsUpdateManager>(
     () async => KomodoAssetsUpdateManager(
       transformer: coinConfigTransformer,
+      enableAutoUpdate: config.enableAssetAutoUpdate,
       // Application policy is a transient registry view. Persist only the
       // normalized upstream config so changing provider/build policy cannot
       // leave stale token enrollment in Hive.

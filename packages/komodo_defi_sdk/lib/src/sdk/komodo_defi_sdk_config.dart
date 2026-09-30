@@ -29,6 +29,7 @@ class KomodoDefiSdkConfig {
     this.assetConfigTransform,
     this.initialActivationPolicy,
     this.network = const KdfNetworkConfig(),
+    this.enableAssetAutoUpdate = true,
   });
 
   /// Set of asset IDs that should be enabled by default
@@ -105,6 +106,9 @@ class KomodoDefiSdkConfig {
   /// KDF P2P network (netid and optional explicit seed nodes).
   final KdfNetworkConfig network;
 
+  /// Whether coin configs are refreshed from the coins repo in the background.
+  final bool enableAssetAutoUpdate;
+
   KomodoDefiSdkConfig copyWith({
     Set<String>? defaultAssets,
     bool? preActivateDefaultAssets,
@@ -122,6 +126,7 @@ class KomodoDefiSdkConfig {
     AssetConfigTransform? assetConfigTransform,
     ActivationPolicySnapshot? initialActivationPolicy,
     KdfNetworkConfig? network,
+    bool? enableAssetAutoUpdate,
   }) {
     return KomodoDefiSdkConfig(
       defaultAssets: defaultAssets ?? this.defaultAssets,
@@ -150,6 +155,8 @@ class KomodoDefiSdkConfig {
       initialActivationPolicy:
           initialActivationPolicy ?? this.initialActivationPolicy,
       network: network ?? this.network,
+      enableAssetAutoUpdate:
+          enableAssetAutoUpdate ?? this.enableAssetAutoUpdate,
     );
   }
 }
