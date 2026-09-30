@@ -20,7 +20,7 @@ class SeedNodeService {
   /// following the same pattern as other update managers in the framework.
   static Future<AssetRuntimeUpdateConfig> _getRuntimeConfig() async {
     final configRepository = AssetRuntimeUpdateConfigRepository();
-    return await configRepository.tryLoad() ?? const AssetRuntimeUpdateConfig();
+    return requireRuntimeConfig(configRepository);
   }
 
   /// Fetches seed nodes for [network].

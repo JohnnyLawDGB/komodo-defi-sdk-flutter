@@ -10,4 +10,6 @@ export 'src/coins_config/_coins_config_index.dart';
 export 'src/komodo_coin_updater.dart' show KomodoCoinUpdater;
 export 'src/runtime_update_config/_runtime_update_config_index.dart'
     show AssetRuntimeUpdateConfigRepository;
+export 'src/runtime_update_config/require_runtime_config.dart'
+    show requireRuntimeConfig;
 export 'src/seed_node_updater.dart' show SeedNodeUpdater;

@@ -228,8 +228,7 @@ class KomodoAssetsUpdateManager implements AssetsUpdateManager {
   Future<AssetRuntimeUpdateConfig> _getRuntimeConfig() async {
     if (_runtimeConfig != null) return _runtimeConfig!;
     _log.fine('Loading runtime update config');
-    _runtimeConfig =
-        await _configRepository.tryLoad() ?? const AssetRuntimeUpdateConfig();
+    _runtimeConfig = await requireRuntimeConfig(_configRepository);
     return _runtimeConfig!;
   }
 
