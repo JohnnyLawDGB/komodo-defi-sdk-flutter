@@ -121,6 +121,38 @@ void main() {
         reason: 'newer destination timestamps cannot hide modified bytes',
       );
     });
+
+    group('without a web KDF platform configured', () {
+      late CopyPlatformAssetsBuildStep step;
+
+      setUp(() {
+        // Web files present in the artifacts must be ignored.
+        File(path.join(artifactOutputDirectory.path, 'web', 'index.html'))
+          ..createSync(recursive: true)
+          ..writeAsStringSync('artifact web file');
+        step = CopyPlatformAssetsBuildStep(
+          projectRoot: projectRoot,
+          artifactOutputDirectory: artifactOutputDirectory,
+          buildConfig: _buildConfig(includeWeb: false),
+        );
+      });
+
+      test('canSkip does not throw and ignores web files', () async {
+        expect(await step.canSkip(), isTrue);
+      });
+
+      test('build does not throw and copies no web assets', () async {
+        await expectLater(step.build(), completes);
+        expect(
+          Directory(path.join(projectRoot.path, 'web')).existsSync(),
+          isFalse,
+        );
+      });
+
+      test('revert does not throw', () async {
+        await expectLater(step.revert(), completes);
+      });
+    });
   });
 }
 
@@ -145,7 +177,7 @@ void _writeLinuxFixture(Directory projectRoot) {
   }
 }
 
-BuildConfig _buildConfig() => BuildConfig(
+BuildConfig _buildConfig({bool includeWeb = true}) => BuildConfig(
   apiConfig: ApiBuildConfig(
     apiCommitHash: 'bd413dcfea73c9de2e85903323946a378b180fa7',
     branch: 'feat/tron-gasfree',
@@ -153,15 +185,16 @@ BuildConfig _buildConfig() => BuildConfig(
     concurrentDownloadsEnabled: true,
     sourceUrls: const ['https://devbuilds.gleec.com'],
     platforms: {
-      'web': ApiBuildPlatformConfig(
-        matchingConfig: ApiFileMatchingConfig(
-          matchingPattern: r'^kdf_[a-f0-9]{7,40}-wasm\.zip$',
+      if (includeWeb)
+        'web': ApiBuildPlatformConfig(
+          matchingConfig: ApiFileMatchingConfig(
+            matchingPattern: r'^kdf_[a-f0-9]{7,40}-wasm\.zip$',
+          ),
+          validZipSha256Checksums: const [
+            '9242cbba06eda6e82fc057897781cea2adf85f67f0cf5710f4feaf0a5e6d844c',
+          ],
+          path: 'web/kdf/bin',
         ),
-        validZipSha256Checksums: const [
-          '9242cbba06eda6e82fc057897781cea2adf85f67f0cf5710f4feaf0a5e6d844c',
-        ],
-        path: 'web/kdf/bin',
-      ),
     },
   ),
   coinCIConfig: CoinBuildConfig(

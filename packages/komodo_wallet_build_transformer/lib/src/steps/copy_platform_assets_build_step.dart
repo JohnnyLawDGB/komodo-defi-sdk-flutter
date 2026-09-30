@@ -28,14 +28,29 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
   Future<void> build() async {
     _log.info('Artifact output directory: $artifactOutputDirectory\n');
     await _copyLinuxAssets();
+    if (_kdfWebPath == null) {
+      _logNoWebPlatform();
+      return;
+    }
     await _copyKdfWebFiles();
     await _copyOtherWebFiles();
   }
 
   @override
   Future<bool> canSkip() async {
+    if (_kdfWebPath == null) {
+      _logNoWebPlatform();
+      return _canSkipLinuxAssets();
+    }
     return _canSkipLinuxAssets() && _canSkipKdfWebFiles();
   }
+
+  /// The configured KDF web path, or null when no `web` platform is configured
+  /// (e.g. forks whose KDF release has no web artifact).
+  String? get _kdfWebPath => buildConfig.apiConfig.platforms['web']?.path;
+
+  void _logNoWebPlatform() =>
+      _log.info('No web KDF platform configured; skipping web asset copy');
 
   @override
   Future<void> revert([Exception? e]) async {
@@ -59,7 +74,7 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
   }
 
   Future<void> _copyKdfWebFiles() async {
-    final kdfWebPath = buildConfig.apiConfig.platforms['web']!.path;
+    final kdfWebPath = _kdfWebPath!;
     final sourceDir = Directory(
       path.join(artifactOutputDirectory.path, kdfWebPath),
     );
@@ -68,7 +83,7 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
   }
 
   Future<void> _copyOtherWebFiles() async {
-    final kdfWebPath = buildConfig.apiConfig.platforms['web']!.path;
+    final kdfWebPath = _kdfWebPath!;
     final kdfLibDestDirectory = Directory(
       path.join(projectRoot.path, kdfWebPath),
     );
@@ -195,7 +210,7 @@ class CopyPlatformAssetsBuildStep extends BuildStep {
   }
 
   bool _canSkipKdfWebFiles() {
-    final kdfWebPath = buildConfig.apiConfig.platforms['web']!.path;
+    final kdfWebPath = _kdfWebPath!;
     final sourceDir = Directory(path.join(artifactOutputDirectory.path, 'web'));
     final destDir = Directory(
       path.join(projectRoot.path, path.dirname(kdfWebPath)),
