@@ -20,13 +20,10 @@ void main() {
   /// all seven platforms present, none release-blocked, exactly one checksum
   /// each. Assert that, and a roll stays a one-file change.
   const requiredPlatforms = <String>[
-    'web',
     'ios',
-    'macos',
     'android-armv7',
     'android-aarch64',
     'linux',
-    'windows',
   ];
 
   Map<String, dynamic> platform() => {
