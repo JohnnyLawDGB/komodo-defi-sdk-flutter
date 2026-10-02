@@ -35,13 +35,13 @@ void main() {
       );
     });
 
-    test('a software wallet uses the reduced gap', () {
+    test('a software wallet uses the full BIP-44 gap', () {
       expect(
         HdGapLimit.resolve(
           privKeyPolicy: software,
           isNewlyGeneratedFirstSignIn: false,
         ),
-        3,
+        20,
       );
     });
 
@@ -55,9 +55,12 @@ void main() {
       );
     });
 
-    test('the three tiers are ordered and distinct', () {
-      expect(HdGapLimit.newlyGeneratedFirstSignIn, lessThan(HdGapLimit.software));
-      expect(HdGapLimit.software, lessThan(HdGapLimit.hardware));
+    test('only a wallet generated this session narrows the gap', () {
+      expect(
+        HdGapLimit.newlyGeneratedFirstSignIn,
+        lessThan(HdGapLimit.software),
+      );
+      expect(HdGapLimit.software, HdGapLimit.hardware);
     });
   });
 

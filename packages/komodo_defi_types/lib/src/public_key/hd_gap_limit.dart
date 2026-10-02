@@ -32,13 +32,15 @@ abstract final class HdGapLimit {
   /// the addresses to check, so a missed balance looks like missing funds.
   static const int hardware = 20;
 
-  /// Software wallets after their first sign-in.
+  /// Software wallets after their first sign-in: the BIP-44 standard gap.
   ///
-  /// Deliberately below the BIP-44 standard of 20. This is a product decision:
-  /// it removes 17 of every 21 probes from the scan, and accepts that a wallet
-  /// whose history contains a run of more than three consecutive unused
-  /// addresses will not have anything past that run discovered.
-  static const int software = 3;
+  /// DigiByte fork: upstream used 3 here to cut node requests on EVM token
+  /// fan-out. A DigiByte wallet restores seeds made by other BIP-44 wallets,
+  /// whose history can contain longer runs of unused addresses, and a short
+  /// gap silently hides those funds. The DigiByte app lists only UTXO coins
+  /// (DGB, BTC, LTC), where a probe is one or two electrum requests, so the
+  /// full gap is cheap.
+  static const int software = 20;
 
   /// A software wallet that this session generated, on its first sign-in.
   ///

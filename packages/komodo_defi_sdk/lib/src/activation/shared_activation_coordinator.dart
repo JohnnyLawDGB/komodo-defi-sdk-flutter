@@ -96,8 +96,9 @@ class SharedActivationCoordinator {
   ///
   /// Three minutes still holds for **software** wallets, because those numbers
   /// were taken at `gap_limit: 20` and `HdGapLimit.resolve` sends
-  /// `software` = 3 (`newlyGeneratedFirstSignIn` = 1) for them, so the walk is
-  /// ~4 probes rather than 21 at a measured ~2.1s per gap unit.
+  /// `software` = 20 (DigiByte fork; upstream used 3) for them, so the walk is
+  /// the same 21 probes as measured, at ~2.1s per gap unit. Only a wallet
+  /// generated this session (`newlyGeneratedFirstSignIn` = 1) walks fewer.
   ///
   /// **Trezor is the exception and has the least headroom.** `HdGapLimit.resolve`
   /// returns `hardware` = 20 for `PrivateKeyPolicy.trezor()`, so a hardware

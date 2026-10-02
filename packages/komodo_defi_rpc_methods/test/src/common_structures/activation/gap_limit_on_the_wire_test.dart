@@ -49,7 +49,7 @@ void main() {
         _ethConfig(),
       ).copyWith(gapLimit: HdGapLimit.software);
 
-      expect(params.toRpcParams()['gap_limit'], 3);
+      expect(params.toRpcParams()['gap_limit'], 20);
     });
 
     test('an absent gap limit emits no key at all', () {
@@ -70,13 +70,13 @@ void main() {
   });
 
   group('UTXO activation carries gap_limit', () {
-    test('a software wallet gets the reduced gap', () {
+    test('a software wallet gets the BIP-44 gap', () {
       final protocol = UtxoProtocol.fromJson(_utxoConfig());
       final params = protocol.defaultActivationParams(
         gapLimit: HdGapLimit.software,
       );
 
-      expect(params.gapLimit, 3);
+      expect(params.gapLimit, 20);
       expect(
         params.scanPolicy,
         ScanPolicy.scanIfNewWallet,
@@ -87,19 +87,16 @@ void main() {
     test('a newly generated wallet gets the minimum', () {
       final params = UtxoProtocol.fromJson(
         _utxoConfig(),
-      ).defaultActivationParams(
-        gapLimit: HdGapLimit.newlyGeneratedFirstSignIn,
-      );
+      ).defaultActivationParams(gapLimit: HdGapLimit.newlyGeneratedFirstSignIn);
       expect(params.gapLimit, 1);
     });
 
     test('Trezor keeps the full gap and the stronger scan policy', () {
-      final params = UtxoProtocol.fromJson(
-        _utxoConfig(),
-      ).defaultActivationParams(
-        privKeyPolicy: const PrivateKeyPolicy.trezor(),
-        gapLimit: HdGapLimit.hardware,
-      );
+      final params = UtxoProtocol.fromJson(_utxoConfig())
+          .defaultActivationParams(
+            privKeyPolicy: const PrivateKeyPolicy.trezor(),
+            gapLimit: HdGapLimit.hardware,
+          );
 
       expect(params.gapLimit, 20);
       expect(params.scanPolicy, ScanPolicy.scan);
