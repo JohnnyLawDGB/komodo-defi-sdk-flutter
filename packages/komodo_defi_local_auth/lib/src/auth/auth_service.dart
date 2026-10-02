@@ -176,7 +176,9 @@ class KdfAuthService implements IAuthService {
     this._hostConfig, {
     SecureLocalStorage? secureStorage,
     KdfNetworkConfig network = const KdfNetworkConfig(),
+    int? mnemonicWordCount,
   }) : _network = network,
+       _mnemonicWordCount = mnemonicWordCount,
        _secureStorage = secureStorage ?? SecureLocalStorage() {
     _logger.info('KdfAuthService initialized');
     _startHealthCheck();
@@ -186,6 +188,9 @@ class KdfAuthService implements IAuthService {
   final KomodoDefiFramework _kdfFramework;
   final IKdfHostConfig _hostConfig;
   final KdfNetworkConfig _network;
+
+  /// `word_count` for seeds KDF generates at registration (null = KDF's 12).
+  final int? _mnemonicWordCount;
   final StreamController<KdfUser?> _authStateController =
       StreamController.broadcast();
   final SecureLocalStorage _secureStorage;

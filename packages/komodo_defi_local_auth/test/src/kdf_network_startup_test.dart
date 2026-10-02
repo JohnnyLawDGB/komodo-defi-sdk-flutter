@@ -228,4 +228,75 @@ void main() {
     expect(params['seednodes'], isNotEmpty);
     expect(params['seednodes'], isNot(contains('seed1.digiscope.me')));
   });
+
+  test('wallet creation asks KDF for the configured word count', () async {
+    final hostConfig = LocalConfig(https: false, rpcPassword: 'rpc-pass');
+    final operations = _StartupKdfOperations(
+      noAuthResult: KdfStartupResult.ok,
+      walletResult: KdfStartupResult.initError,
+    );
+    final service = KdfAuthService(
+      KomodoDefiFramework.createWithOperations(
+        hostConfig: hostConfig,
+        kdfOperations: operations,
+      ),
+      hostConfig,
+      mnemonicWordCount: 24,
+    );
+    addTearDown(service.dispose);
+
+    await expectLater(
+      service.register(
+        walletName: 'new-wallet',
+        password: 'Qz7!sentinel-Wv4#',
+        options: const AuthOptions(
+          derivationMethod: DerivationMethod.hdWallet,
+          allowWeakPassword: true,
+        ),
+      ),
+      throwsA(isA<AuthException>()),
+    );
+
+    final walletStarts = operations.startParams
+        .where((p) => p.containsKey('wallet_password'))
+        .toList();
+    expect(walletStarts, isNotEmpty);
+    for (final params in walletStarts) {
+      expect(params['word_count'], 24);
+      expect(params.containsKey('passphrase'), isFalse);
+    }
+  });
+
+  test('word_count is omitted unless configured', () async {
+    final hostConfig = LocalConfig(https: false, rpcPassword: 'rpc-pass');
+    final operations = _StartupKdfOperations(
+      noAuthResult: KdfStartupResult.ok,
+      walletResult: KdfStartupResult.initError,
+    );
+    final service = KdfAuthService(
+      KomodoDefiFramework.createWithOperations(
+        hostConfig: hostConfig,
+        kdfOperations: operations,
+      ),
+      hostConfig,
+    );
+    addTearDown(service.dispose);
+
+    await expectLater(
+      service.signIn(
+        walletName: 'test-wallet',
+        password: 'Qz7!sentinel-Wv4#',
+        options: const AuthOptions(
+          derivationMethod: DerivationMethod.hdWallet,
+          allowWeakPassword: true,
+        ),
+      ),
+      throwsA(isA<AuthException>()),
+    );
+
+    expect(operations.startParams, isNotEmpty);
+    for (final params in operations.startParams) {
+      expect(params.containsKey('word_count'), isFalse);
+    }
+  });
 }

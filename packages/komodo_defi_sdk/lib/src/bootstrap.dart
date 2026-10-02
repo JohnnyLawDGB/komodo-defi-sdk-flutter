@@ -166,6 +166,7 @@ Future<void> bootstrap({
       hostConfig:
           hostConfig ?? LocalConfig(https: false, rpcPassword: rpcPassword),
       network: config.network,
+      mnemonicWordCount: config.mnemonicWordCount,
     );
     await auth.ensureInitialized();
     return auth;

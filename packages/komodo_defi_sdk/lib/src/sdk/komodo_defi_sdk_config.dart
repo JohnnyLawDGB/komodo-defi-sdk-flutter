@@ -30,6 +30,7 @@ class KomodoDefiSdkConfig {
     this.initialActivationPolicy,
     this.network = const KdfNetworkConfig(),
     this.enableAssetAutoUpdate = true,
+    this.mnemonicWordCount,
   });
 
   /// Set of asset IDs that should be enabled by default
@@ -109,6 +110,11 @@ class KomodoDefiSdkConfig {
   /// Whether coin configs are refreshed from the coins repo in the background.
   final bool enableAssetAutoUpdate;
 
+  /// BIP39 word count for seeds KDF generates at wallet creation
+  /// (KDF `word_count`). Null keeps KDF's default of 12. Valid values are
+  /// 12, 15, 18, 21 and 24.
+  final int? mnemonicWordCount;
+
   KomodoDefiSdkConfig copyWith({
     Set<String>? defaultAssets,
     bool? preActivateDefaultAssets,
@@ -127,6 +133,7 @@ class KomodoDefiSdkConfig {
     ActivationPolicySnapshot? initialActivationPolicy,
     KdfNetworkConfig? network,
     bool? enableAssetAutoUpdate,
+    int? mnemonicWordCount,
   }) {
     return KomodoDefiSdkConfig(
       defaultAssets: defaultAssets ?? this.defaultAssets,
@@ -157,6 +164,7 @@ class KomodoDefiSdkConfig {
       network: network ?? this.network,
       enableAssetAutoUpdate:
           enableAssetAutoUpdate ?? this.enableAssetAutoUpdate,
+      mnemonicWordCount: mnemonicWordCount ?? this.mnemonicWordCount,
     );
   }
 }

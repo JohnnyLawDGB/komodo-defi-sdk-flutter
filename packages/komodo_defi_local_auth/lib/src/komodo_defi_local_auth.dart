@@ -366,8 +366,14 @@ class KomodoDefiLocalAuth implements KomodoDefiAuth {
     required IKdfHostConfig hostConfig,
     bool allowRegistrations = true,
     KdfNetworkConfig network = const KdfNetworkConfig(),
+    int? mnemonicWordCount,
   }) : _allowRegistrations = allowRegistrations,
-       _authService = KdfAuthService(kdf, hostConfig, network: network) {
+       _authService = KdfAuthService(
+         kdf,
+         hostConfig,
+         network: network,
+         mnemonicWordCount: mnemonicWordCount,
+       ) {
     _trezorAuthService = TrezorAuthService(_authService, TrezorRepository(kdf));
   }
 

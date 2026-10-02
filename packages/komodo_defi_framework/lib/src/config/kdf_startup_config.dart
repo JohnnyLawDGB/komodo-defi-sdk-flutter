@@ -38,6 +38,7 @@ class KdfStartupConfig {
     required this.iAmSeed,
     required this.isBootstrapNode,
     required this.eventStreamingConfiguration,
+    required this.wordCount,
   }) {
     SeedNodeValidator.validate(
       seedNodes: seedNodes,
@@ -69,6 +70,11 @@ class KdfStartupConfig {
   final bool? isBootstrapNode;
   final EventStreamingConfiguration? eventStreamingConfiguration;
 
+  /// BIP39 word count KDF uses when it generates a new wallet seed
+  /// (`word_count`). Null leaves KDF's default (12). KDF only reads it when
+  /// it creates a seed, so passing it on sign-in is harmless.
+  final int? wordCount;
+
   // Either a list of coin JSON objects or a string of the path to a file
   // containing a list of coin JSON objects.
   final dynamic coins;
@@ -96,6 +102,7 @@ class KdfStartupConfig {
     bool? iAmSeed,
     bool? isBootstrapNode,
     EventStreamingConfiguration? eventStreamingConfiguration,
+    int? wordCount,
   }) async {
     assert(
       !kIsWeb || userHome == null && dbDir == null,
@@ -115,6 +122,10 @@ class KdfStartupConfig {
       hdAccountId == null,
       'HD Account ID is not supported yet in the SDK. '
       'Use at your own risk.',
+    );
+    assert(
+      wordCount == null || const [12, 15, 18, 21, 24].contains(wordCount),
+      'word_count must be a BIP39 length (12, 15, 18, 21 or 24)',
     );
 
     // Validate seed node configuration before creating the object
@@ -147,6 +158,7 @@ class KdfStartupConfig {
       hdAccountId: hdAccountId,
       allowRegistrations: allowRegistrations,
       enableHd: enableHd,
+      wordCount: wordCount,
       eventStreamingConfiguration:
           eventStreamingConfiguration ??
           EventStreamingConfiguration.defaultConfig(),
@@ -200,6 +212,7 @@ class KdfStartupConfig {
       hdAccountId: null,
       allowRegistrations: false,
       enableHd: false,
+      wordCount: null,
       disableP2p: false,
       seedNodes: seeds,
       iAmSeed: false,
@@ -229,6 +242,7 @@ class KdfStartupConfig {
       'allow_registrations': allowRegistrations,
       if (enableHd != null) 'enable_hd': enableHd,
       if (hdAccountId != null) 'hd_account_id': hdAccountId,
+      if (wordCount != null) 'word_count': wordCount,
       'https': https,
       'coins': coins,
       // 'use_trading_proto_v2': true,
