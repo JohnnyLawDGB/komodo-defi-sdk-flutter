@@ -299,4 +299,51 @@ void main() {
       expect(params.containsKey('word_count'), isFalse);
     }
   });
+
+  test(
+    'no-auth and wallet KDF starts listen on the host config port',
+    () async {
+      // The client dials hostConfig.rpcUrl; KDF must bind exactly that port,
+      // or the RPC password goes to whatever else listens there.
+      final hostConfig = LocalConfig(
+        https: false,
+        rpcPassword: 'rpc-pass',
+        port: 41234,
+      );
+      final operations = _StartupKdfOperations(
+        noAuthResult: KdfStartupResult.ok,
+        walletResult: KdfStartupResult.initError,
+      );
+      final service = KdfAuthService(
+        KomodoDefiFramework.createWithOperations(
+          hostConfig: hostConfig,
+          kdfOperations: operations,
+        ),
+        hostConfig,
+      );
+      addTearDown(service.dispose);
+
+      await expectLater(
+        service.signIn(
+          walletName: 'test-wallet',
+          password: 'Qz7!sentinel-Wv4#',
+          options: const AuthOptions(
+            derivationMethod: DerivationMethod.hdWallet,
+            allowWeakPassword: true,
+          ),
+        ),
+        throwsA(isA<AuthException>()),
+      );
+
+      expect(hostConfig.rpcUrl.port, 41234);
+      expect(
+        operations.startParams.map((p) => p.containsKey('wallet_password')),
+        containsAll([false, true]),
+      );
+      for (final params in operations.startParams) {
+        expect(params['rpcport'], 41234);
+        expect(params['rpc_password'] == hostConfig.rpcPassword, isTrue);
+      }
+    },
+  );
 }

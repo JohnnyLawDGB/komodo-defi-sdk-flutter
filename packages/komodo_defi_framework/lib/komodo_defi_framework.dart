@@ -322,6 +322,16 @@ class KomodoDefiFramework implements ApiClient {
       );
     }
 
+    // The client dials `hostConfig.rpcUrl`. A local KDF bound anywhere else
+    // leaves that port to whatever already listens there - another app's KDF
+    // - which would then receive this instance's RPC password.
+    if (hostConfig is LocalConfig &&
+        (startupConfig.rpcPort ?? kDefaultKdfRpcPort) != hostConfig.port) {
+      throw ArgumentError(
+        'RPC port mismatch between startup and host configs.',
+      );
+    }
+
     if (hostConfig is RemoteConfig) {
       if (startupConfig.rpcIp != hostConfig.ipAddress) {
         throw ArgumentError(
