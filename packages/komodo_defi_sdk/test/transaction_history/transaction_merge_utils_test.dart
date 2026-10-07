@@ -102,11 +102,9 @@ void main() {
       authOptions: AuthOptions(derivationMethod: DerivationMethod.hdWallet),
     );
 
-    // A send as KDF reports it. my_tx_history v2 returns
-    // `current_block + 1 - block_height` (my_tx_history_v2.rs:492-496),
-    // so while unconfirmed (block_height 0) it is the tip + 1. The stream
-    // event carries no confirmations and defaults to 0
-    // (tx_history_event.dart:23).
+    // A send as the V2 strategy delivers it: 0 while unconfirmed (KDF's
+    // tip + 1 is dropped there). A stream event carries no confirmations
+    // and defaults to 0 (tx_history_event.dart:23).
     Transaction send({required int blockHeight, required int confs}) =>
         TransactionInfo(
           txHash: 'sent-hash',
@@ -144,11 +142,11 @@ void main() {
       txHash: 'sent-hash',
     );
 
-    // Broadcast seen in the mempool (tip 24342219), refresh, mined in
-    // 24342220, a stream event, then two more refreshes.
+    // Broadcast seen in the mempool, refresh, mined in 24342220, a stream
+    // event, then two more refreshes.
     List<Transaction> lifecycle() => [
-      send(blockHeight: 0, confs: 24342220),
-      send(blockHeight: 0, confs: 24342220),
+      send(blockHeight: 0, confs: 0),
+      send(blockHeight: 0, confs: 0),
       send(blockHeight: 24342220, confs: 1),
       send(blockHeight: 24342220, confs: 0),
       send(blockHeight: 24342220, confs: 3),
@@ -198,17 +196,43 @@ void main() {
       expect(page.transactions.single.confirmations, 2);
     });
 
+    // A 0.3.0-stored pending row: KDF's tip + 1 without a block.
+    Transaction legacyPending() =>
+        poisoned().copyWith(blockHeight: 0, confirmations: 24342220);
+
     test('a stored pending row with the tip stays pending', () {
       final reconciler = TransactionListReconciler();
       final stored = reconciler.merge(
         existing: const [],
-        incoming: [poisoned().copyWith(blockHeight: 0)],
+        incoming: [legacyPending()],
       );
       final merged = reconciler.merge(
         existing: stored,
-        incoming: [send(blockHeight: 0, confs: 24342220)],
+        incoming: [send(blockHeight: 0, confs: 0)],
       );
       expect(merged.single.confirmations, 0);
+    });
+
+    test('a stored pending row with the tip, then a stream event', () async {
+      final reconciler = TransactionListReconciler();
+      final stored = reconciler.merge(
+        existing: const [],
+        incoming: [legacyPending()],
+      );
+      final merged = reconciler.merge(
+        existing: stored,
+        incoming: [send(blockHeight: 24342220, confs: 0)],
+      );
+      expect(merged.single.confirmations, 0);
+      expect(merged.single.blockHeight, 24342220);
+
+      final storage = InMemoryTransactionStorage();
+      await storage.storeTransactions([legacyPending()], wallet);
+      await storage.storeTransactions([
+        send(blockHeight: 24342220, confs: 0),
+      ], wallet);
+      final page = await storage.getTransactions(dgb, wallet);
+      expect(page.transactions.single.confirmations, 0);
     });
 
     test('a stream event without confirmations keeps the known count', () {
@@ -222,6 +246,46 @@ void main() {
         incoming: [send(blockHeight: 24342204, confs: 0)],
       );
       expect(merged.single.confirmations, 5);
+    });
+
+    test('a mined tx never merges down to 0', () async {
+      final updates = [
+        send(blockHeight: 24342204, confs: 0),
+        send(blockHeight: 0, confs: 0),
+        send(blockHeight: 24342203, confs: 0),
+        send(blockHeight: 24342203, confs: 1),
+      ];
+      final reconciler = TransactionListReconciler();
+      var merged = reconciler.merge(
+        existing: const [],
+        incoming: [send(blockHeight: 24342204, confs: 5)],
+      );
+      final storage = InMemoryTransactionStorage();
+      await storage.storeTransactions([
+        send(blockHeight: 24342204, confs: 5),
+      ], wallet);
+      for (final update in updates) {
+        merged = reconciler.merge(existing: merged, incoming: [update]);
+        expect(merged.single.confirmations, 5);
+        await storage.storeTransactions([update], wallet);
+        final page = await storage.getTransactions(dgb, wallet);
+        expect(page.transactions.single.confirmations, 5);
+      }
+    });
+
+    test('a confirmed row without a block (TRC20) stays confirmed', () async {
+      // TronGrid TRC20 rows: blockHeight 0, confirmations 1.
+      final trc20 = legacyPending().copyWith(confirmations: 1);
+      final reconciler = TransactionListReconciler();
+      var merged = reconciler.merge(existing: const [], incoming: [trc20]);
+      merged = reconciler.merge(existing: merged, incoming: [trc20]);
+      expect(merged.single.confirmations, 1);
+
+      final storage = InMemoryTransactionStorage();
+      await storage.storeTransactions([trc20], wallet);
+      await storage.storeTransactions([trc20], wallet);
+      final page = await storage.getTransactions(dgb, wallet);
+      expect(page.transactions.single.confirmations, 1);
     });
   });
 }

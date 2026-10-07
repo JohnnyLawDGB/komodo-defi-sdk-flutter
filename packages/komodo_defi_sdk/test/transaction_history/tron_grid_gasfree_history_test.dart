@@ -4,6 +4,8 @@ import 'package:decimal/decimal.dart';
 import 'package:http/http.dart' as http;
 import 'package:komodo_defi_sdk/src/pubkeys/pubkey_manager.dart';
 import 'package:komodo_defi_sdk/src/transaction_history/strategies/tronscan_transaction_history_strategy.dart';
+import 'package:komodo_defi_sdk/src/transaction_history/transaction_merge_utils.dart';
+import 'package:komodo_defi_sdk/src/transaction_history/transaction_storage.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
@@ -492,5 +494,49 @@ void main() {
       expect(requestUris[2].path, contains(_eoa2));
       expect(requestUris[3].path, contains(_custody2));
     });
+  });
+
+  test('a TRC20 row (block unknown) stays confirmed after merging', () async {
+    final usdt = _createUsdtTrc20Asset();
+    when(
+      () => pubkeyManager.getPubkeys(usdt),
+    ).thenAnswer((_) async => _makePubkeys(usdt));
+    stubResponses({
+      _eoa: (_) => _gridResponse([
+        _makeTrc20Row(
+          txId: 'deposit1',
+          from: _external,
+          to: _eoa,
+          value: '25000000',
+        ),
+      ]),
+    });
+
+    final response = await createStrategy().fetchTransactionHistory(
+      apiClient,
+      usdt,
+      const PagePagination(pageNumber: 1, itemsPerPage: 20),
+    );
+    final row = response.transactions.single;
+    expect((row.blockHeight, row.confirmations), (0, 1));
+
+    final tx = row.asTransaction(usdt.id);
+    expect(tx.confirmations, 1);
+
+    final reconciler = TransactionListReconciler();
+    var merged = reconciler.merge(existing: const [], incoming: [tx]);
+    merged = reconciler.merge(existing: merged, incoming: [tx]);
+    expect(merged.single.confirmations, 1);
+
+    const wallet = WalletId(
+      name: 'wallet',
+      pubkeyHash: 'wallet-pubkey',
+      authOptions: AuthOptions(derivationMethod: DerivationMethod.hdWallet),
+    );
+    final storage = InMemoryTransactionStorage();
+    await storage.storeTransactions([tx], wallet);
+    await storage.storeTransactions([tx], wallet);
+    final page = await storage.getTransactions(usdt.id, wallet);
+    expect(page.transactions.single.confirmations, 1);
   });
 }

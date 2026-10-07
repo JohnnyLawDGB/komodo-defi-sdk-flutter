@@ -68,7 +68,7 @@ class V2TransactionStrategy extends TransactionHistoryStrategy {
 
     final isHdWallet = (await _auth.currentUser)?.isHd ?? false;
 
-    return switch (pagination) {
+    final response = await switch (pagination) {
       final PagePagination p => client.rpc.transactionHistory.myTxHistory(
         coin: asset.id.id,
         limit: p.itemsPerPage,
@@ -90,6 +90,53 @@ class V2TransactionStrategy extends TransactionHistoryStrategy {
         'Pagination mode ${pagination.runtimeType} not supported',
       ),
     };
+    return _withoutTipConfirmations(response);
+  }
+
+  /// KDF's my_tx_history v2 returns `current_block + 1 - block_height`
+  /// (my_tx_history_v2.rs), which is the chain tip + 1 for an unconfirmed
+  /// transaction (block_height 0). Without a block there are none.
+  static MyTxHistoryResponse _withoutTipConfirmations(
+    MyTxHistoryResponse response,
+  ) {
+    if (!response.transactions.any(
+      (tx) => tx.blockHeight == 0 && tx.confirmations != 0,
+    )) {
+      return response;
+    }
+    return MyTxHistoryResponse(
+      mmrpc: response.mmrpc,
+      currentBlock: response.currentBlock,
+      fromId: response.fromId,
+      limit: response.limit,
+      skipped: response.skipped,
+      syncStatus: response.syncStatus,
+      total: response.total,
+      totalPages: response.totalPages,
+      pageNumber: response.pageNumber,
+      pagingOptions: response.pagingOptions,
+      transactions: [
+        for (final tx in response.transactions)
+          tx.blockHeight == 0 && tx.confirmations != 0
+              ? TransactionInfo(
+                  txHash: tx.txHash,
+                  from: tx.from,
+                  to: tx.to,
+                  myBalanceChange: tx.myBalanceChange,
+                  blockHeight: 0,
+                  confirmations: 0,
+                  timestamp: tx.timestamp,
+                  feeDetails: tx.feeDetails,
+                  coin: tx.coin,
+                  internalId: tx.internalId,
+                  memo: tx.memo,
+                  spentByMe: tx.spentByMe,
+                  receivedByMe: tx.receivedByMe,
+                  transactionFee: tx.transactionFee,
+                )
+              : tx,
+      ],
+    );
   }
 
   static const List<Type> _supportedProtocols = [

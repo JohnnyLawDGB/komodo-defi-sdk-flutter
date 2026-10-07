@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:collection/collection.dart';
 import 'package:decimal/decimal.dart';
 import 'package:komodo_defi_types/komodo_defi_types.dart';
@@ -66,22 +68,25 @@ class TransactionMergeUtils {
   /// block height is authoritative: it is `tip + 1 - height` at the time
   /// of the fetch, so it replaces whatever was kept before. A larger kept
   /// value may be the tip + 1 that KDF reported while the transaction was
-  /// unconfirmed, and keeping the maximum would freeze it. A count from an
-  /// older block height (a stale re-fetch) or a zero count (a stream event
-  /// carries none) keeps the known one.
+  /// unconfirmed, and keeping the maximum would freeze it.
+  ///
+  /// Otherwise, when either side has a block, only counts that come with
+  /// a block are kept, and the larger wins: a stale re-fetch or a stream
+  /// event (which carries no count) never lowers a known one. When neither
+  /// side has a block the smaller wins, so a tip-sized pending count gives
+  /// way to 0 while a confirmed row without a block (TronGrid TRC20,
+  /// confirmations 1) keeps its count.
   static int _mergeConfirmations(Transaction existing, Transaction incoming) {
     if (incoming.blockHeight > 0 &&
         incoming.confirmations > 0 &&
         incoming.blockHeight >= existing.blockHeight) {
       return incoming.confirmations;
     }
-    final blockHeight = existing.blockHeight > incoming.blockHeight
-        ? existing.blockHeight
-        : incoming.blockHeight;
-    if (blockHeight == 0) return 0;
-    return existing.confirmations > incoming.confirmations
-        ? existing.confirmations
-        : incoming.confirmations;
+    if (existing.blockHeight == 0 && incoming.blockHeight == 0) {
+      return min(existing.confirmations, incoming.confirmations);
+    }
+    int withBlock(Transaction tx) => tx.blockHeight == 0 ? 0 : tx.confirmations;
+    return max(withBlock(existing), withBlock(incoming));
   }
 
   static Decimal _maxDecimal(Decimal left, Decimal right) =>

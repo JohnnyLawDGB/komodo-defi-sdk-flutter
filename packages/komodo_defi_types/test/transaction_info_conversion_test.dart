@@ -34,43 +34,43 @@ void main() {
     expect(transaction.balanceChanges.totalAmount.toString(), '11.5');
   });
 
-  group('confirmations from KDF my_tx_history v2', () {
-    // KDF computes `current_block + 1 - block_height`
-    // (my_tx_history_v2.rs:492-496), so an unconfirmed transaction
-    // (block_height 0) comes back with the chain tip + 1.
+  group('asTransaction confirmations', () {
     TransactionInfo info({required int blockHeight, required int confs}) =>
         TransactionInfo(
           txHash: 'hash',
-          from: const ['DMine'],
-          to: const ['DThem'],
-          myBalanceChange: '-1.0226',
+          from: const ['source'],
+          to: const ['recipient'],
+          myBalanceChange: '-1.5',
           blockHeight: blockHeight,
           confirmations: confs,
           timestamp: 1,
           feeDetails: null,
-          coin: 'DGB',
+          coin: 'COIN',
           internalId: 'hash',
-          spentByMe: '10',
-          receivedByMe: '8.9774',
+          spentByMe: '1.5',
+          receivedByMe: '0',
           memo: null,
         );
-    final dgb = AssetId(
-      id: 'DGB',
-      name: 'DigiByte',
-      symbol: AssetSymbol(assetConfigId: 'DGB'),
+    final coin = AssetId(
+      id: 'COIN',
+      name: 'Coin',
+      symbol: AssetSymbol(assetConfigId: 'COIN'),
       chainId: AssetChainId(chainId: 0),
       derivationPath: null,
       subClass: CoinSubClass.utxo,
     );
 
-    test('an unconfirmed transaction has zero, never the chain tip', () {
-      final tx = info(blockHeight: 0, confs: 24342220).asTransaction(dgb);
-      expect(tx.confirmations, 0);
+    // TronGrid TRC20 rows are confirmed with the block unknown
+    // (tronscan_transaction_history_strategy.dart, blockHeight 0 and
+    // confirmations 1). The KDF tip fix lives in the V2 strategy.
+    test('a confirmed row without a block keeps its count', () {
+      final tx = info(blockHeight: 0, confs: 1).asTransaction(coin);
+      expect(tx.confirmations, 1);
       expect(tx.blockHeight, 0);
     });
 
-    test('a mined transaction keeps the KDF value', () {
-      final tx = info(blockHeight: 24342204, confs: 2).asTransaction(dgb);
+    test('a mined row keeps its count', () {
+      final tx = info(blockHeight: 24342204, confs: 2).asTransaction(coin);
       expect(tx.confirmations, 2);
       expect(tx.blockHeight, 24342204);
     });

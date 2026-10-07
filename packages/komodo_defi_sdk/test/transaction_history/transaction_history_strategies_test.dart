@@ -691,4 +691,82 @@ void main() {
       expect(response.transactions, hasLength(1));
     });
   });
+
+  group('V2TransactionStrategy', () {
+    test('an unconfirmed KDF row has 0 confirmations, not the tip', () async {
+      // KDF my_tx_history v2 returns `current_block + 1 - block_height`
+      // (my_tx_history_v2.rs:492-496): the tip + 1 without a block.
+      Map<String, dynamic> row(String hash, int height, int confs) => {
+        'tx_hash': hash,
+        'from': ['DMine'],
+        'to': ['DThem'],
+        'my_balance_change': '-1.0226',
+        'spent_by_me': '10',
+        'received_by_me': '8.9774',
+        'total_amount': '10',
+        'block_height': height,
+        'confirmations': confs,
+        'timestamp': height == 0 ? 0 : 1791100000,
+        'coin': 'KMD',
+        'internal_id': hash,
+      };
+      final client = _FixedApiClient({
+        'mmrpc': '2.0',
+        'result': {
+          'coin': 'KMD',
+          'target': {'type': 'iguana'},
+          'current_block': 24342219,
+          'transactions': [
+            row('pending', 0, 24342220),
+            row('mined', 24342204, 16),
+          ],
+          'sync_status': {'state': 'Finished'},
+          'limit': 10,
+          'skipped': 0,
+          'total': 2,
+          'total_pages': 1,
+          'paging_options': {'PageNumber': 1},
+        },
+      });
+      when(() => auth.currentUser).thenAnswer((_) async => null);
+      final asset = Asset.fromJson(const {
+        'coin': 'KMD',
+        'type': 'UTXO',
+        'name': 'Komodo',
+        'fname': 'Komodo',
+        'wallet_only': false,
+        'mm2': 1,
+        'chain_id': 141,
+        'decimals': 8,
+        'is_testnet': false,
+        'required_confirmations': 1,
+        'derivation_path': "m/44'/141'/0'",
+        'protocol': {'type': 'UTXO'},
+      });
+
+      final response = await V2TransactionStrategy(auth)
+          .fetchTransactionHistory(
+            client,
+            asset,
+            const PagePagination(pageNumber: 1, itemsPerPage: 10),
+          );
+
+      expect(
+        [for (final tx in response.transactions) tx.confirmations],
+        [0, 16],
+      );
+      expect(response.currentBlock, 24342219);
+      expect(response.total, 2);
+    });
+  });
+}
+
+class _FixedApiClient implements ApiClient {
+  _FixedApiClient(this.response);
+
+  final Map<String, dynamic> response;
+
+  @override
+  Future<Map<String, dynamic>> executeRpc(Map<String, dynamic> request) async =>
+      response;
 }
