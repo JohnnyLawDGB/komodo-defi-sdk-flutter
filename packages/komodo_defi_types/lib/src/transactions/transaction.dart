@@ -140,7 +140,10 @@ extension TransactionInfoExtension on TransactionInfo {
             : Decimal.parse(myBalanceChange).abs(),
       ),
       timestamp: DateTime.fromMillisecondsSinceEpoch(timestamp * 1000),
-      confirmations: confirmations,
+      // KDF's my_tx_history v2 returns `current_block + 1 - block_height`,
+      // which is the chain tip + 1 for an unconfirmed transaction
+      // (block_height 0). Without a block there are no confirmations.
+      confirmations: blockHeight == 0 ? 0 : confirmations,
       blockHeight: blockHeight,
       from: from,
       to: to,

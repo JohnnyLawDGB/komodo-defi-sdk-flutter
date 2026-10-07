@@ -47,9 +47,7 @@ class TransactionMergeUtils {
         spentByMe: spent,
         totalAmount: totalAmount,
       ),
-      confirmations: existing.confirmations > incoming.confirmations
-          ? existing.confirmations
-          : incoming.confirmations,
+      confirmations: _mergeConfirmations(existing, incoming),
       blockHeight: existing.blockHeight > incoming.blockHeight
           ? existing.blockHeight
           : incoming.blockHeight,
@@ -62,6 +60,28 @@ class TransactionMergeUtils {
           ? existing.timestamp
           : incoming.timestamp,
     );
+  }
+
+  /// A count reported for a mined transaction at the known (or a newer)
+  /// block height is authoritative: it is `tip + 1 - height` at the time
+  /// of the fetch, so it replaces whatever was kept before. A larger kept
+  /// value may be the tip + 1 that KDF reported while the transaction was
+  /// unconfirmed, and keeping the maximum would freeze it. A count from an
+  /// older block height (a stale re-fetch) or a zero count (a stream event
+  /// carries none) keeps the known one.
+  static int _mergeConfirmations(Transaction existing, Transaction incoming) {
+    if (incoming.blockHeight > 0 &&
+        incoming.confirmations > 0 &&
+        incoming.blockHeight >= existing.blockHeight) {
+      return incoming.confirmations;
+    }
+    final blockHeight = existing.blockHeight > incoming.blockHeight
+        ? existing.blockHeight
+        : incoming.blockHeight;
+    if (blockHeight == 0) return 0;
+    return existing.confirmations > incoming.confirmations
+        ? existing.confirmations
+        : incoming.confirmations;
   }
 
   static Decimal _maxDecimal(Decimal left, Decimal right) =>
